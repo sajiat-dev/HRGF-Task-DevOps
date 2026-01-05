@@ -3,6 +3,7 @@ HRGF DevOps Assessment Task Solution
 
 High level solution plan and architecture diagram
 
+```mermaid
 flowchart LR
     Dev[Developer]
 
