@@ -3,27 +3,25 @@ HRGF DevOps Assessment Task Solution
 
 High level solution plan and architecture diagram
 
-┌────────────┐
-│ Code       │
-└─────┬──────┘
-      ↓
-┌────────────┐
-│   GitHub   │  (App Code + K8s YAML)
-└─────┬──────┘
-      ↓
-┌──────────────────────────┐
-│ GitHub Actions (CI/CD)   │
-│ - Build                  │
-│ - Test                   │
-│ - Docker Build           │
-│ - Push the image to ECR  │
-│ - Deploy to EKS (kubectl)│
-└─────┬────────────────────┘
-      ↓
-┌────────────┐
-│  AWS ECR   │ 
-└─────┬──────┘
-      ↓
-┌──────────────────────────┐
-│ Amazon EKS (Kubernetes)  │
-└──────────────────────────┘
+flowchart LR
+    Dev[Developer]
+
+    Dev -->|Push Code| GH[GitHub Repository]
+
+    GH -->|Trigger| GA[GitHub Actions CI/CD]
+
+    GA -->|Build Docker Image| Docker[Docker Build]
+    Docker -->|Push Image| ECR[AWS ECR]
+
+    GA -->|kubectl / Helm Deploy| EKS[Amazon EKS Cluster]
+
+    subgraph AWS Cloud
+        ECR
+        EKS
+    end
+
+    subgraph Infrastructure
+        TF[Terraform]
+        TF -->|Provision| EKS
+        TF -->|Provision| ECR
+    end
