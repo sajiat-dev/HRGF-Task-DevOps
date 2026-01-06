@@ -1,0 +1,57 @@
+# GitHub Actions workflow: build Docker image, push to ECR, update EKS deployment
+name: Build and Deploy to EKS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - id: build_and_push
+      name: Build, tag and push Docker image to ECR
+      env:
+        ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+        IMAGE_TAG: latest
+      run: |
+        IMAGE_URI=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+        aws ecr describe-repositories --repository-names "${ECR_REPOSITORY}" 
+        docker build -t "${IMAGE_URI}" .
+        docker push "${IMAGE_URI}"
+        echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+    - name: Install kubectl
+      uses: actions/setup-kubectl@v4
+      with:
+        version: '1.28.0'
+
+    - name: Update kubeconfig for EKS
+      uses: aws-actions/eks-update-kubeconfig@v2
+      with:
+        cluster-name: ${{ secrets.EKS_CLUSTER_NAME }}
+        region: ${{ secrets.AWS_REGION }}
+
+    - name: Deploy to EKS (set image and wait rollout)
+      env:
+        K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
+      run: |
+        IMAGE=${{ steps.build_and_push.outputs.IMAGE_URI }}
+        kubectl set image deployment/appsvc-deployment nginx=${IMAGE} --record
+        kubectl rollout status deployment/appsvc-deployment -n ${K8S_NAMESPACE:-default} --timeout=120s

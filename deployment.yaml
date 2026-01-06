@@ -1,4 +1,3 @@
-# ...existing code...
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,13 +14,9 @@ spec:
       labels:
         app: appsvc
     spec:
-      # If your image is in a private registry, uncomment and set imagePullSecrets
-      # imagePullSecrets:
-      # - name: regcred
       containers:
       - name: nginx
-        # Replace with your ECR (or other registry) image URI
-        image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/mynginx:latest
+        image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/appsvc:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
